@@ -115,41 +115,7 @@ with tab1:
             tooltip=["ward_id", alt.Tooltip("week:T"), "tier", alt.Tooltip("pred_cases:Q", format=".1f")],
         ).properties(width="container", height=max(220, 14 * len(order))))
 
-# ---------- tab 2: drivers ----------
-with tab2:
-    c1, c2 = st.columns(2)
-    with c1:
-        st.subheader("What is pushing risk up or down?")
-        st.caption("Change in predicted cases if that factor were at its typical value. Positive = raises risk.")
-        st.altair_chart(
-            alt.Chart(groups_df).mark_bar().encode(
-                x=alt.X("effect_cases:Q", title="Effect on predicted cases"),
-                y=alt.Y("group:N", sort="-x", title=None),
-                color=alt.condition(alt.datum.effect_cases > 0, alt.value(C.TIER_COLORS["Critical"]), alt.value(C.TIER_COLORS["Low"])),
-                tooltip=["group", alt.Tooltip("effect_cases:Q", format="+.2f")],
-            ).properties(width="container", height=220))
-        with st.expander("Per-feature detail"):
-            st.dataframe(feat_df.rename(columns={"value": "this ward/week", "typical": "typical", "effect_cases": "effect (cases)"}),
-                         hide_index=True)
-    with c2:
-        st.subheader("Rainfall that is driving this week")
-        st.caption(f"Rain falling {min(C.RAIN_LAGS)}-{max(C.RAIN_LAGS)} weeks earlier feeds this prediction (breeding clock).")
-        lag_df = pd.DataFrame({"weeks before target": [f"{k}w" for k in C.RAIN_LAGS],
-                               "rainfall_mm": [row[f"rain_lag_{k}w"] for k in C.RAIN_LAGS]})
-        st.altair_chart(
-            alt.Chart(lag_df).mark_bar(color="#3b82f6").encode(
-                x=alt.X("weeks before target:N", sort=None), y=alt.Y("rainfall_mm:Q", title="Rainfall (mm)"),
-                tooltip=["weeks before target", alt.Tooltip("rainfall_mm:Q", format=".1f")],
-            ).properties(width="container", height=220))
 
-    st.subheader(f"Ward {ward}: predicted vs reported cases")
-    hist = ready[ready["ward_id"] == ward].tail(52)
-    base = alt.Chart(hist).encode(x=alt.X("week:T", title=None))
-    layers = [base.mark_line(color="#d62839").encode(y=alt.Y("pred_cases:Q", title="Weekly cases"), tooltip=["week:T", alt.Tooltip("pred_cases:Q", format=".1f")])]
-    if C.TARGET in hist:
-        layers.append(base.mark_line(color="#555", strokeDash=[4, 3]).encode(y=f"{C.TARGET}:Q"))
-    st.altair_chart(alt.layer(*layers).properties(width="container", height=240))
-    st.caption("Red = model prediction, dashed grey = reported cases.")
 
 # ---------- tab 3: validation ----------
 with tab3:
