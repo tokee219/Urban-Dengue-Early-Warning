@@ -1,0 +1,37 @@
+{
+    "features": [
+        "ward_id",
+        "population_density_sqkm",
+        "water_logging_risk_index",
+        "sanitation_score",
+        "avg_temp_c",
+        "rainfall_mm",
+        "relative_humidity_pct",
+        "dengue_lag_1",
+        "dengue_lag_2",
+        "dengue_lag_3",
+        "dengue_lag_4",
+        "dengue_rolling_mean_4w",
+        "rainfall_lag_1",
+        "rainfall_lag_2",
+        "rainfall_lag_3",
+        "rainfall_lag_4",
+        "rainfall_rolling_mean_4w",
+        "temp_lag_1",
+        "temp_lag_2",
+        "temp_lag_3",
+        "humidity_lag_1",
+        "humidity_lag_2",
+        "humidity_lag_3"
+    ],
+    "prediction_horizons": [
+        2,
+        3,
+        4
+    ],
+    "selected_models": {
+        "2_week": "HistGradientBoosting",
+        "3_week": "XGBoost",
+        "4_week": "Random Forest"
+    }
+}
