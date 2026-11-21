@@ -1,0 +1,12 @@
+# Environments and caches
+.venv/
+.venv313/
+__pycache__/
+
+# Data: do not publish until licensing is confirmed
+*.xlsx
+ml/ward_lookup.csv
+
+# Local files that should not be published
+ml/predict_old.py
+ml/dengue_3w_xgboost.joblib
