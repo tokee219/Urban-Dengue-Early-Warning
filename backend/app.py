@@ -151,25 +151,3 @@ with tab2:
     st.altair_chart(alt.layer(*layers).properties(width="container", height=240))
     st.caption("Red = model prediction, dashed grey = reported cases.")
 
-# ---------- tab 3: validation ----------
-with tab3:
-    st.subheader("Chronological validation")
-    st.caption(bundle.get("split", "Train on earlier weeks, test on later weeks (no shuffling)."))
-    m = bundle.get("metrics", {})
-    if m:
-        for col, (k, v) in zip(st.columns(len(m)), m.items()):
-            col.metric(k, f"{v:.2f}")
-    st.caption(f"Model: {bundle.get('model_name', type(bundle['model']).__name__)} · trained {bundle.get('trained_at', 'n/a')}")
-    val = bundle.get("validation")
-    if val is not None and len(val):
-        wk = val.groupby("week")[["actual", "predicted"]].sum().reset_index().melt("week", var_name="series", value_name="cases")
-        st.altair_chart(
-            alt.Chart(wk).mark_line().encode(x=alt.X("week:T", title=None), y=alt.Y("cases:Q", title="City-wide weekly cases"),
-                                            color=alt.Color("series:N", title=None), tooltip=["week:T", "series", alt.Tooltip("cases:Q", format=".0f")]
-                                            ).properties(width="container", height=280))
-        err = (val.assign(abs_err=(val.actual - val.predicted).abs()).groupby("ward_id")["abs_err"].mean()
-               .sort_values(ascending=False).head(10).reset_index().rename(columns={"abs_err": "MAE"}))
-        st.markdown("**Wards with the largest hold-out error**")
-        st.dataframe(err, hide_index=True)
-    else:
-        st.info("No hold-out predictions in the model bundle (optional `validation` DataFrame).")
