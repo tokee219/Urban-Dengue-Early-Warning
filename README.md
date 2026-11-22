@@ -262,5 +262,4 @@ External services and data:
 
 ## Team
 
-See the GitHub contributors page and commit history. The ML pipeline, evaluation and model export
-and the dashboard were developed on separate branches and merged into `main`.
+Debug duo
