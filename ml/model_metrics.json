@@ -1,0 +1,229 @@
+{
+ "_notes": [
+  "All numbers come from the project's own runs on the provided dataset (records of unverified provenance).",
+  "Predictions are clipped at zero. Test period = target dates 2024-01-01 to 2025-12-29 (6,300 rows per horizon).",
+  "Validation = target dates in 2023 (3,120 rows). Alert cutoff 8 and Critical cutoff 14 were chosen on validation only.",
+  "Not a clinically validated or officially approved public-health system."
+ ],
+ "selected_models": {
+  "2": "HistGradientBoosting",
+  "3": "XGBoost",
+  "4": "Random Forest"
+ },
+ "risk_cutoffs_predicted_cases": {
+  "medium": 4,
+  "high": 8,
+  "critical": 14
+ },
+ "actual_case_bands_used_for_evaluation": {
+  "medium": 4,
+  "high": 10,
+  "critical": 20
+ },
+ "regression_test": {
+  "2": {
+   "model": "HistGradientBoosting",
+   "mae": 1.0742,
+   "rmse": 2.0947,
+   "persistence_mae": 1.8694,
+   "persistence_rmse": 3.5796
+  },
+  "3": {
+   "model": "XGBoost",
+   "mae": 1.1486,
+   "rmse": 2.255,
+   "persistence_mae": 2.0559,
+   "persistence_rmse": 3.849
+  },
+  "4": {
+   "model": "Random Forest",
+   "mae": 1.3192,
+   "rmse": 2.5023,
+   "persistence_mae": 2.2159,
+   "persistence_rmse": 4.0586
+  }
+ },
+ "alert_quality_test_cutoff_8": {
+  "definition": "Alert = predicted cases >= 8. Positive = actual cases >= 10 (High or Critical).",
+  "2": {
+   "recall": 0.745,
+   "precision": 0.4543,
+   "alerts_raised": 733,
+   "actual_high_plus_weeks": 447
+  },
+  "3": {
+   "recall": 0.7226,
+   "precision": 0.4614,
+   "alerts_raised": 700,
+   "actual_high_plus_weeks": 447
+  },
+  "4": {
+   "recall": 0.7472,
+   "precision": 0.3967,
+   "alerts_raised": 842,
+   "actual_high_plus_weeks": 447
+  }
+ },
+ "risk_label_test": {
+  "2": {
+   "exact_match": 0.8513,
+   "within_one_level": 0.9867
+  },
+  "3": {
+   "exact_match": 0.8386,
+   "within_one_level": 0.9832
+  },
+  "4": {
+   "exact_match": 0.8289,
+   "within_one_level": 0.9778
+  }
+ },
+ "validation_residual_quantiles_actual_minus_predicted": {
+  "definition": "Quantiles of (actual - predicted) on 2023 validation data. Used for an approximate range only, not a formal confidence interval.",
+  "2": {
+   "p05": -2.53,
+   "p25": -0.19,
+   "p50": -0.04,
+   "p75": 0.31,
+   "p95": 5.42
+  },
+  "3": {
+   "p05": -2.94,
+   "p25": -0.35,
+   "p50": -0.04,
+   "p75": 0.08,
+   "p95": 4.9
+  },
+  "4": {
+   "p05": -3.44,
+   "p25": -0.52,
+   "p50": -0.02,
+   "p75": 0.1,
+   "p95": 6.05
+  }
+ },
+ "baseline_comparison_2w_test": {
+  "note": "XGBoost row is the 2-week XGBoost model from the validation phase, not the deployed HistGradientBoosting model.",
+  "rows": [
+   {
+    "method": "Persistence (last week)",
+    "mae": 1.8694,
+    "rmse": 3.5796
+   },
+   {
+    "method": "Seasonal naive (same week last year)",
+    "mae": 1.6933,
+    "rmse": 3.5826
+   },
+   {
+    "method": "Seasonal average (3 weeks last year)",
+    "mae": 1.4426,
+    "rmse": 2.9697
+   },
+   {
+    "method": "XGBoost 2-week",
+    "mae": 1.0531,
+    "rmse": 2.0661
+   },
+   {
+    "method": "HistGradientBoosting 2-week (deployed)",
+    "mae": 1.0742,
+    "rmse": 2.0947
+   }
+  ]
+ },
+ "rolling_origin_2w_xgboost": {
+  "note": "Train on all years before the test year; target-date split. 2023 was used to choose the alert cutoff, so it is not independent.",
+  "rows": [
+   {
+    "test_year": 2019,
+    "high_plus_share": 0.1465,
+    "baseline_mae": 2.2442,
+    "model_mae": 1.2261,
+    "recall_cutoff8": 0.8315,
+    "precision_cutoff8": 0.705
+   },
+   {
+    "test_year": 2020,
+    "high_plus_share": 0.0766,
+    "baseline_mae": 1.891,
+    "model_mae": 1.142,
+    "recall_cutoff8": 0.5188,
+    "precision_cutoff8": 0.5
+   },
+   {
+    "test_year": 2021,
+    "high_plus_share": 0.0567,
+    "baseline_mae": 1.6929,
+    "model_mae": 0.9653,
+    "recall_cutoff8": 0.6045,
+    "precision_cutoff8": 0.4908
+   },
+   {
+    "test_year": 2022,
+    "high_plus_share": 0.1362,
+    "baseline_mae": 2.4151,
+    "model_mae": 1.1993,
+    "recall_cutoff8": 0.7741,
+    "precision_cutoff8": 0.6015
+   },
+   {
+    "test_year": 2023,
+    "high_plus_share": 0.1353,
+    "baseline_mae": 2.6942,
+    "model_mae": 1.207,
+    "recall_cutoff8": 0.7962,
+    "precision_cutoff8": 0.7619
+   },
+   {
+    "test_year": 2024,
+    "high_plus_share": 0.0613,
+    "baseline_mae": 1.7553,
+    "model_mae": 0.9445,
+    "recall_cutoff8": 0.7333,
+    "precision_cutoff8": 0.5181
+   },
+   {
+    "test_year": 2025,
+    "high_plus_share": 0.0808,
+    "baseline_mae": 1.9856,
+    "model_mae": 1.1506,
+    "recall_cutoff8": 0.7579,
+    "precision_cutoff8": 0.4505
+   }
+  ]
+ },
+ "feature_removal_2w_xgboost_validation_mae": {
+  "note": "Higher MAE = worse. Shows which input groups the model depends on; not causal evidence.",
+  "rows": [
+   {
+    "variant": "All 23 features",
+    "mae": 1.207
+   },
+   {
+    "variant": "Without rainfall_lag_1",
+    "mae": 1.3451
+   },
+   {
+    "variant": "Without all rainfall features",
+    "mae": 1.6937
+   },
+   {
+    "variant": "Without all weather features",
+    "mae": 2.374
+   },
+   {
+    "variant": "Without dengue history",
+    "mae": 1.2129
+   }
+  ]
+ },
+ "limitations": [
+  "Dataset provenance and licence are unverified; rows are called dataset records, not confirmed surveillance data.",
+  "The test period (2024-2025) is two quiet years with only 15 actual Critical weeks, so Critical results are statistically fragile.",
+  "More than half of High alerts are false alarms (precision about 40-46% at cutoff 8).",
+  "Ward vulnerability values never change over time, so the model cannot learn how changing them would affect dengue.",
+  "No month or week-of-year feature; rainfall may partly stand in for season. Feature effects are not causal.",
+  "No live weather source: predictions use weather records from the dataset."
+ ]
+}
