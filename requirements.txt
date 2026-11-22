@@ -1,10 +1,12 @@
-# Tested with Python 3.13
-numpy==2.4.6
-pandas==3.1.1
-scikit-learn==1.6.1
-xgboost==3.4.1
-joblib==1.6.0
+# Core Machine Learning & Data Processing
+numpy>=1.26.0
+pandas>=2.1.0
+scikit-learn>=1.4.0
+xgboost>=2.0.0
+joblib>=1.3.0
+openpyxl>=3.1.0
+requests>=2.31.0
 
-# Only needed to re-run the notebooks (not for predictions):
-# openpyxl
-# matplotlib
+# Interactive Dashboard & Visualizations
+streamlit>=1.35.0
+plotly>=5.18.0
