@@ -1,153 +1,266 @@
-# 🦟 Urban Dengue Early Warning System
-### AI-Powered Hyper-Local Outbreak Prediction & Municipal Early-Warning Engine
-**EDU AI Engineering Hackathon 2026 — Phase 1: 24-Hour Remote Qualifier**  
-**Challenge:** AI for Urban Dengue Outbreak  
-**Target Metropolitan Areas:** Dhaka North (DNCC), Dhaka South (DSCC), Chattogram (CCC), Gazipur (GCC), Narayanganj (NCC) — 60 Urban Wards
+# Urban Dengue Early Warning System
+
+Ward-level, 2-to-4-week dengue early-warning prototype for five Bangladeshi city corporations
+(Dhaka North, Dhaka South, Chattogram, Gazipur, Narayanganj; 60 wards).
+
+Built for the **EDU AI Engineering Hackathon 2026, Phase 1 (24-hour remote qualifier)**,
+challenge *AI for Urban Dengue Outbreak*.
+
+> **Status: decision-support prototype.** It is not clinically validated, not an official
+> surveillance system, and not approved by any public-health authority. Risk tiers are
+> model-defined statistical bands, not official alert thresholds. See [Limitations](#limitations).
 
 ---
 
-## 📌 Executive Overview
-In urban Bangladesh, dengue epidemics overwhelm hospitals every year. When city corporations deploy larviciding and fogging teams only after hospital admissions surge, transmission chains are already weeks ahead of containment.
+## What it does
 
-The **Urban Dengue Early Warning System** operationalizes the biological **Vector Breeding Clock**:
-- **7 to 14 Days:** Rainfall stagnation in drains and discarded receptacles incubates *Aedes aegypti* eggs into adult mosquitoes.
-- **8 to 12 Days:** Extrinsic incubation period (viral replication inside the mosquito) followed by human clinical incubation.
-- **2 to 4 Weeks:** The critical lag between heavy rainfall events and hospital emergency admission spikes.
+Pick a ward and a "current week". The system uses that ward's recent weather and case history to
+predict dengue cases **2, 3 and 4 weeks ahead**, labels each forecast **Low, Medium, High or
+Critical**, and shows which weather inputs the forecast is most sensitive to.
 
-By computing multi-week grouped weather lags and integrating hyper-local ward structural vulnerabilities (`water_logging_risk_index`, `population_density_sqkm`, `sanitation_score`), this system provides public health officials with an actionable **2-to-4-week early warning window** to eradicate mosquito larvae *before* outbreaks peak.
+Why a lag-based model: rain does not cause infections overnight. Standing water, mosquito
+development and virus incubation create a delay of roughly 2 to 4 weeks between rainfall and
+hospital cases (see the hackathon brief). The model therefore uses multi-week, per-ward weather
+lags instead of same-week weather.
 
----
+## Quickstart
 
-## 🚀 Quickstart: Reproducible Local Setup (≤ 3 Minutes)
+Requirements: Python 3.12 or 3.13 and an internet connection for the first install.
 
-This application runs 100% locally with zero cloud dependencies. Follow these steps to clone and launch in under 3 minutes:
-
-### 1. Clone the Repository
 ```bash
 git clone https://github.com/tokee219/Urban-Dengue-Early-Warning.git
 cd Urban-Dengue-Early-Warning
-```
 
-### 2. Create and Activate a Virtual Environment
-```bash
 # Windows
-python -m venv venv
-venv\Scripts\activate
+python -m venv .venv
+.venv\Scripts\activate
 
 # macOS / Linux
-python3 -m venv venv
-source venv/bin/activate
-```
+python3 -m venv .venv
+source .venv/bin/activate
 
-### 3. Install Dependencies
-```bash
 pip install -r requirements.txt
-```
-
-### 4. Launch the Interactive Dashboard
-```bash
 streamlit run frontend/app.py
 ```
-The dashboard opens automatically in your browser at `http://localhost:8501`.
 
-### 5. Run Automated Test Suite
-Verify model inference, lag computations, and latency benchmarks:
+The dashboard opens at <http://localhost:8501>. Installing the dependencies took about 20 seconds
+in a clean environment during our checks.
+
+**Dataset.** The dataset is provided by the hackathon organizers and is not stored in this
+repository. On first launch the app tries to download it once from the public Google Sheet linked
+in the brief and saves it as `data/hackathon_preli_dataset.xlsx`. If that download fails, open the
+sheet, choose *File, Download, Microsoft Excel (.xlsx)*, and save the file under that exact name.
+
+**Pinned versions matter.** `requirements.txt` pins exact versions on purpose. The saved model
+files were trained with scikit-learn 1.6.1, and newer scikit-learn releases (for example 1.9)
+cannot load them.
+
+**Tests.**
+
 ```bash
 python tests/test_pipeline.py
 ```
 
----
+This checks the lag features, model inference at all three horizons, the risk tiers and the
+inference time budget.
 
-## 🎯 Key Capabilities & Domain Innovations
+## Data
 
-### 1. Multi-Week Grouped Weather Lag Pipeline
-- Ingests weekly `rainfall_mm`, `avg_temp_c`, `min_temp_c`, `max_temp_c`, and `relative_humidity_pct`.
-- Computes grouped lags ($t-1$ to $t-4$), 4-week rolling means, and autoregressive dengue lags per ward.
-- Features are strictly backward-looking: contemporaneous dengue cases at week $t$ are excluded to prevent real-world data leakage.
+| Item | Value |
+|---|---|
+| Source | Hackathon organizers' dataset (link in the brief) |
+| Size | 31,320 weekly rows, 12 columns, 60 wards, 5 cities |
+| Period | 2016-01-04 to 2025-12-29 (about 522 weeks per ward) |
+| Weather columns | `avg_temp_c`, `max_temp_c`, `min_temp_c`, `rainfall_mm`, `relative_humidity_pct` |
+| Ward columns (fixed per ward) | `population_density_sqkm`, `water_logging_risk_index`, `sanitation_score` |
+| Target | `dengue_cases` (weekly count per ward) |
+| Quality | No missing values or duplicate rows; about 58% of weekly counts are zero |
 
-### 2. Multi-Horizon Machine Learning Engine
-- **2 Weeks Ahead ($t+14d$):** `HistGradientBoostingRegressor` (Test MAE: 1.07 vs Persistence: 1.87 — **42.7% error reduction**)
-- **3 Weeks Ahead ($t+21d$):** `XGBoost Regressor` with ColumnTransformer (Test MAE: 1.15 vs Persistence: 2.06 — **44.2% error reduction**)
-- **4 Weeks Ahead ($t+28d$):** `RandomForestRegressor` (Test MAE: 1.32 vs Persistence: 2.22 — **40.5% error reduction**)
-- Calibrated outbreak risk tiers: **Low** (<4 cases), **Medium** (4–7.9 cases), **High** (8–13.9 cases), and **Critical** (≥14 cases).
+**Provenance.** We have not independently verified whether these records are real reported
+cases, simulated data, or generated data. In this project they are called *dataset records*, and
+all results describe performance on this dataset only.
 
-### 3. Public Health "What-If" Scenario Simulator
-- Public health directors can toggle **What-If Simulation** to model sudden monsoon rainfall surges (+20% to +200%) or temperature shifts.
-- The pipeline re-evaluates multi-week lag impacts in real-time, forecasting downstream vector outbreaks weeks ahead.
+## How it works
 
-### 4. High-Impact Domain Bonus Extensions (Implemented)
-- ⭐ **Bonus 1: Interactive Ward-Level Risk Heatmap:** Dynamic OpenStreetMap spatial scatter visualization with ward centroids across Dhaka North, Dhaka South, Chattogram, Gazipur, and Narayanganj. Bubbles are color-coded by risk tier and sized by predicted case volume, accompanied by an actionable ward prioritization leaderboard.
-- ⭐ **Bonus 2: Multi-Week Forecast Confidence Intervals:** 90% empirical prediction intervals calculated from out-of-sample validation residual quantiles ($p_{05}$ to $p_{95}$) rendered as uncertainty ribbons.
-- ⭐ **Bonus 3: Chronological Validation & Model Performance Dashboard:** Interactive validation tab displaying chronological split rationale, multi-year rolling origin out-of-time evaluations (2019–2025), and ablation studies showing model error jumps by 96.7% if weather features are omitted.
-
----
-
-## 💡 Compute & API Cost Efficiency Statement
-
-- **Fast Local Inference:** Serialized `.joblib` and XGBoost JSON models load once via `@st.cache_resource` and execute predictions in **< 5 ms per ward** on CPU.
-- **Zero LLM Token Costs:** The platform does not use costly, slow, or hallucinating LLM APIs. All driver sensitivities and recommendations are calculated deterministically via counterfactual algorithms.
-- **Zero Paid External API Calls:** 100% self-contained surveillance records; requires no monthly recurring weather API subscriptions.
-- **Precomputed Medians:** Feature medians are serialized in `ml/feature_medians.json` to deliver instant sensitivity driver breakdowns without runtime Monte Carlo overhead.
-
----
-
-## 🤖 AI Disclosure & External API Statement
-*(Required under Hackathon Scoring Criterion 8)*
-
-- **AI Assistant Disclosure:**
-  - **Google DeepMind Antigravity AI:** Used during development for architecture structuring, code refactoring, test pipeline generation, coordinate mapping, and technical documentation drafting.
-- **External APIs:**
-  - **None at Runtime.** The system requires **0 external paid APIs** and **0 LLM API calls**.
-  - All geospatial map tiles render via free, open-source OpenStreetMap layers (`open-street-map`) in Plotly without requiring proprietary Mapbox tokens.
-
----
-
-## 🎥 3-Minute Uncut Video Demo Walkthrough Guide
-*(Required under Hackathon Scoring Criterion 7 — Uncut screen recording ≤ 3:00 mins with voiceover)*
-
-A sample walkthrough sequence for recording the uncut video demo:
-- **0:00 – 0:30 | Introduction & Local Startup:** Show terminal launching `streamlit run frontend/app.py` in ≤ 3 seconds. State problem statement: the 2-to-4-week Vector Breeding Clock in Dhaka & Chattogram.
-- **0:30 – 1:15 | Ward Early Warning Outlook & Drivers:** Select `Dhaka North` -> `DNCC_Ward_01`. Point out the 2-week, 3-week, and 4-week forecast cards with 90% confidence intervals and risk badges. Show the historical rainfall vs case lag trajectory chart. Explain the weather driver sensitivity waterfall bar chart.
-- **1:15 – 1:55 | What-If Public Health Simulator:** Toggle "Enable What-If Weather Shock". Increase rainfall slider to 1.5x (+50% monsoon surge) and show in real-time how predicted cases jump into High/Critical risk tiers 2-4 weeks down the line.
-- **1:55 – 2:30 | City-Wide Spatial Risk Map & Leaderboard (Bonus):** Switch to Tab 2. Show the OpenStreetMap interactive heatmap of all 20 wards in Dhaka North. Switch horizons from 2 to 4 weeks. Highlight the sortable High-Risk Ward Prioritization Leaderboard.
-- **2:30 – 3:00 | Validation Dashboard & Cost Efficiency (Bonus):** Switch to Tab 3. Highlight the chronological out-of-time split (2016-2022 train, 2023 val, 2024-2025 test), 42%+ MAE improvement over persistence, ablation proof, and conclude with zero-cost offline local execution.
-
----
-
-## 📁 Repository Directory Structure
-
+```text
+weekly weather + cases (per ward)
+        |
+        v
+per-ward lag features  ---- rainfall lags 1-4 weeks, temperature and humidity lags 1-3 weeks,
+        |                   dengue lags 1-4 weeks, 4-week rolling means, ward ID and
+        |                   ward vulnerability values (23 model inputs in total)
+        v
+horizon-specific model (2, 3 or 4 weeks ahead), predictions clipped at zero
+        |
+        v
+risk tier (Low / Medium / High / Critical)  ->  Streamlit dashboard
 ```
+
+All lags and rolling means are computed within each `ward_id` and only look backwards. The model
+uses weather up to the current week and dengue counts up to the previous week.
+
+### Models
+
+| Horizon | Model | Test MAE | Test RMSE | Persistence MAE | MAE reduction |
+|---|---|---:|---:|---:|---:|
+| 2 weeks | HistGradientBoosting | 1.07 | 2.09 | 1.87 | 42.5% |
+| 3 weeks | XGBoost | 1.15 | 2.26 | 2.06 | 44.1% |
+| 4 weeks | Random Forest | 1.32 | 2.50 | 2.22 | 40.5% |
+
+MAE and RMSE are errors in cases per ward per week on the 2024-2025 test period. They are not
+accuracy percentages. "Persistence" means predicting the most recent weekly count.
+
+Model choice: Random Forest and XGBoost were compared at all three horizons on validation data;
+at 2 weeks HistGradientBoosting and a small neural network (MLP) were also tried. The neural
+network was clearly worse. At 2 weeks, HistGradientBoosting and XGBoost were tied within noise
+(validation MAE 1.198 and 1.207), and the lower validation error was used to choose between them.
+Models are serialized with `joblib` (the 3-week XGBoost model is stored as JSON plus a separate
+preprocessor file), so predictions need no retraining.
+
+### Validation strategy (chronological)
+
+The split is by the date of the *target* week, so a model is never trained on weeks later than the
+ones it is evaluated on.
+
+| Set | Target dates | Rows per horizon |
+|---|---|---:|
+| Train | up to 2022-12-31 | about 21,500 |
+| Validation | 2023 | 3,120 |
+| Test | 2024-01-01 to 2025-12-29 | 6,300 |
+
+Risk cutoffs were chosen on validation data only; the test set was used for reporting.
+
+Further checks:
+
+- **Rolling-origin evaluation** (train on all earlier years, test on 2019, 2020, ... 2025): the
+  2-week model beats the persistence baseline in all seven years, with 40-55% lower MAE.
+- **Seasonal baselines:** a seasonal-average rule (mean of three weeks one year earlier) scores
+  MAE 1.44 on the test period, against 1.07 for the deployed 2-week model.
+- **Feature-removal tests** (2-week model, validation): removing all weather features roughly
+  doubles the error (+97%); removing the dengue-history features changes it by under 1%. The
+  predictions are therefore driven mainly by weather and the ward's fixed profile, not by recent
+  case counts. This is an unusual pattern for real surveillance data and is one reason we make no
+  real-world claims.
+
+### Risk tiers
+
+Applied to the predicted number of weekly cases in a ward:
+
+| Tier | Predicted weekly cases |
+|---|---|
+| Low | below 4 |
+| Medium | 4 to below 8 |
+| High | 8 to below 14 |
+| Critical | 14 or more |
+
+The High and Critical cutoffs (8 and 14) were chosen on 2023 validation data to balance catching
+high-case weeks against false alarms, because regression models tend to under-predict peaks. The
+Medium cutoff of 4 is the original, untuned band.
+
+**What the tiers mean in practice (test period, 2-week to 4-week models):** a High-or-above alert
+caught about 72-75% of the weeks that really had 10 or more cases, but only about 40-46% of such
+alerts were correct. The test years were quiet (only 15 weeks with 20 or more cases), so results
+for Critical are statistically fragile.
+
+## Dashboard
+
+Run with `streamlit run frontend/app.py`. Four tabs:
+
+1. **Ward 2-4 week outlook.** Forecast cards for all three horizons with tier badges, a trend
+   chart with an approximate range (5th to 95th percentile of 2023 validation errors; it is not a
+   formal confidence interval), a rainfall chart, the weather-driver chart, and a *what-if*
+   simulator that rescales rainfall, temperature or humidity to see how the model's forecast
+   responds.
+2. **City-wide spatial risk map.** Predicted risk for every ward of a city, plus a ranked table.
+3. **Validation and benchmark metrics.** Test errors against baselines, the rolling-origin
+   results and the feature-removal tests, read from `ml/model_metrics.json`.
+4. **Vector control action protocol.** Example actions for each tier. This is illustrative
+   text, not official guidance; check any real use with public-health authorities.
+
+**Weather-driver method.** For a chosen forecast, each group of inputs (rainfall pattern,
+temperature, humidity, recent cases, fixed ward profile) is replaced in turn by its dataset-wide
+median value, and the change in the forecast is measured. This shows what the trained model is
+sensitive to. It is not evidence of causation, and the effects do not have to add up to the
+prediction.
+
+**Map note.** The dataset has no coordinates. The positions and neighbourhood names in
+`ml/ward_coords.json` are approximate, assigned for visualization only, and do not represent
+official ward boundaries. Map tiles are loaded from OpenStreetMap by the browser, so the map needs
+an internet connection.
+
+**Demo mode.** There is no live weather feed. Every forecast uses records from the dataset for
+the week you select.
+
+## Compute and cost
+
+- Models and data are loaded once per server run (`st.cache_resource`, `st.cache_data`), and city
+  scoring is done in one vectorized pass instead of one call per ward.
+- Measured prediction time for one ward, all three horizons including feature building: about
+  15 ms on an ordinary CPU (single-row model calls take roughly 3-7 ms each).
+- No LLM calls and no paid APIs. The only network use is the one-time dataset download (if the
+  file is missing) and the map tiles in the browser.
+
+## Repository structure
+
+```text
 Urban-Dengue-Early-Warning/
-├── ARCHITECTURE.md          # Comprehensive 1-2 page architecture and validation design
-├── README.md                # Project documentation, quickstart, AI disclosure & demo script
-├── requirements.txt         # Clean, pinned dependencies for reproducible setup
-├── backend/                 # Backend modules and API extensions
-├── data/
-│   └── hackathon_preli_dataset.xlsx  # 10-year weekly dengue & weather dataset (60 wards)
-├── frontend/
-│   ├── app.py               # Streamlit interactive public health early-warning dashboard
-│   ├── data_access.py       # Cached data loader, coordinate lookup, and window extraction
-│   └── drivers.py           # Counterfactual weather sensitivity and driver decomposition
-├── ml/
-│   ├── dengue_2w_histgradientboosting.joblib # Trained 2-week forecast model
-│   ├── dengue_3w_preprocessor.joblib         # ColumnTransformer preprocessor
-│   ├── dengue_3w_xgboost_model.json          # Trained 3-week XGBoost model
-│   ├── dengue_4w_random_forest.joblib        # Trained 4-week Random Forest model
-│   ├── feature_config.json                   # 23-feature schema definition
-│   ├── feature_medians.json                  # Precomputed feature medians for fast drivers
-│   ├── model_metrics.json                    # Full chronological validation & ablation metrics
-│   ├── predict.py                            # Production prediction interface & lag pipeline
-│   ├── risk_thresholds.json                  # Calibrated risk category cutoffs
-│   ├── ward_coords.json                      # Centroid coordinates for all 60 wards
-│   └── ward_lookup.csv                       # Ward baseline vulnerability indices
-├── notebooks/
-│   └── 01_dataset_exploration.ipynb          # Exploratory analysis & model development
-└── tests/
-    └── test_pipeline.py     # Automated unit & integration tests (latency & lag verification)
+  README.md                      this file
+  ARCHITECTURE.md                architecture, data flow, validation split, model rationale
+  requirements.txt               pinned dependencies
+  data/                          dataset goes here (see Data)
+  ml/
+    predict.py                   feature building, model loading, prediction, risk tiers
+    demo_predict.py              minimal example of calling predict_ward
+    feature_config.json          the 23 model inputs and model choices
+    risk_thresholds.json         risk-tier cutoffs
+    model_metrics.json           validation and test metrics shown in the dashboard
+    feature_medians.json         medians used by the weather-driver analysis
+    ward_lookup.csv              fixed ward values (density, water-logging, sanitation)
+    ward_coords.json             approximate ward positions for the map
+    dengue_2w_histgradientboosting.joblib
+    dengue_3w_preprocessor.joblib, dengue_3w_xgboost_model.json
+    dengue_4w_random_forest.joblib
+  frontend/
+    app.py                       Streamlit dashboard
+    data_access.py               cached data loading and weekly windows
+    drivers.py                   weather-driver sensitivity analysis
+  notebooks/                     exploration and model development
+  tests/test_pipeline.py         lag, inference, risk-tier and latency tests
 ```
 
----
+## Limitations
 
-## 👥 Team & Submission Information
-- **Event:** EDU AI Engineering Hackathon 2026
-- **Submission:** AI for Urban Dengue Outbreak Early Warning Platform
+- Dataset provenance and licence are unverified; results describe this dataset only.
+- Not clinically validated, not an official surveillance system.
+- The test period (2024-2025) was quiet, so alert precision and Critical-tier results are
+  uncertain; about half or more of High alerts were false alarms.
+- Ward vulnerability values never change over time, so the model cannot learn how changing them
+  would affect dengue, and wards outside the 60 cannot be scored.
+- The model has no month or week-of-year input, so rainfall may partly stand in for season.
+  Driver results show model sensitivity, not cause and effect.
+- Alert cutoffs were tuned on a single validation year (2023).
+- No live weather source; predictions use dataset weather.
+
+## AI assistants and external services
+
+AI assistants used during development:
+
+- **Claude (Anthropic):** guidance and code for exploratory analysis, feature engineering, model
+  training, chronological validation, evaluation, risk-tier selection, model export, the
+  inference module (`ml/predict.py`), and the dashboard build specification.
+- **Google DeepMind Antigravity:** architecture structuring, code refactoring, test and
+  dashboard code generation, ward-coordinate mapping and documentation drafting.
+
+All AI-generated code and text were reviewed and tested by the team.
+
+External services and data:
+
+- **No external APIs or LLM calls at prediction time.**
+- Hackathon dataset (Google Sheets link from the brief), downloaded once if not present locally.
+- OpenStreetMap map tiles, loaded by the browser for the map tab (no API key).
+- Open-source libraries listed in `requirements.txt`.
+
+## Team
+
+See the GitHub contributors page and commit history. The ML pipeline, evaluation and model export
+and the dashboard were developed on separate branches and merged into `main`.
