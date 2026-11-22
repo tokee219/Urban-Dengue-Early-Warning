@@ -180,18 +180,63 @@ with st.sidebar:
 
     selected_ward = st.selectbox("Select Local Ward", city_wards, index=0)
 
-    # Date / Origin selector
-    # Default to a high-transmission historical period (e.g. 2023 monsoon season) or latest date
-    date_options = [d.strftime("%Y-%m-%d") for d in origins]
-    default_idx = len(date_options) - 1
-    # Look for 2023 peak monsoon week if available
-    for i, d_str in enumerate(date_options):
-        if d_str.startswith("2023-08-07"):
-            default_idx = i
-            break
+    # Date / Origin selector: Support both live/current date and historical dataset archive
+    st.markdown("---")
+    st.subheader("📅 Surveillance Reference Date (Week t)")
 
-    selected_date_str = st.selectbox("Surveillance Reference Week (t)", date_options, index=default_idx)
-    selected_origin = pd.Timestamp(selected_date_str)
+    date_mode = st.radio(
+        "Date Mode",
+        ["Live / Current Date (Today)", "Historical Dataset Archive"],
+        index=0,
+        help="Live mode allows updating to today's date or custom dates with real-time weather inputs. Historical mode selects from past dataset weeks."
+    )
+
+    live_overrides = {}
+    if date_mode == "Live / Current Date (Today)":
+        import datetime
+        # Default to current date (local date e.g. 2026-11-22)
+        today_val = datetime.date(2026, 11, 22)
+        picked_date = st.date_input(
+            "Current Surveillance Date",
+            value=today_val,
+            help="The reference surveillance date representing week t. Predictions project 2, 3, and 4 weeks ahead from this date."
+        )
+        selected_origin = pd.Timestamp(picked_date)
+        selected_date_str = selected_origin.strftime("%Y-%m-%d")
+
+        with st.expander("📝 Real-Time Surveillance & Weather Inputs (Week t)", expanded=True):
+            st.caption("Pre-filled with latest ward baseline; update with today's live field observations.")
+            w_df = df[df["ward_id"] == selected_ward]
+            latest_row = w_df.iloc[-1] if not w_df.empty else None
+
+            c_rain = float(latest_row["rainfall_mm"]) if latest_row is not None else 15.0
+            c_temp = float(latest_row["avg_temp_c"]) if latest_row is not None else 28.0
+            c_hum = float(latest_row["relative_humidity_pct"]) if latest_row is not None else 75.0
+            c_cases = int(latest_row["dengue_cases"]) if latest_row is not None else 5
+
+            inp_c1, inp_c2 = st.columns(2)
+            with inp_c1:
+                input_rain = st.number_input("Rainfall (mm)", min_value=0.0, max_value=500.0, value=c_rain, step=1.0, help="Total rainfall in the current surveillance week")
+                input_temp = st.number_input("Avg Temp (°C)", min_value=10.0, max_value=45.0, value=c_temp, step=0.5, help="Average temperature during current week")
+            with inp_c2:
+                input_hum = st.number_input("Humidity (%)", min_value=10.0, max_value=100.0, value=c_hum, step=1.0, help="Average relative humidity during current week")
+                input_cases = st.number_input("Recent Cases (t-1)", min_value=0, max_value=500, value=c_cases, step=1, help="Surveillance dengue cases recorded in previous week (t-1)")
+
+            live_overrides = {
+                "rainfall_mm": input_rain,
+                "avg_temp_c": input_temp,
+                "relative_humidity_pct": input_hum,
+                "dengue_cases": input_cases,
+            }
+    else:
+        date_options = [d.strftime("%Y-%m-%d") for d in origins]
+        default_idx = len(date_options) - 1
+        for i, d_str in enumerate(date_options):
+            if d_str.startswith("2023-08-07"):
+                default_idx = i
+                break
+        selected_date_str = st.selectbox("Historical Surveillance Week (t)", date_options, index=default_idx)
+        selected_origin = pd.Timestamp(selected_date_str)
 
     st.markdown("---")
     st.subheader("🧪 Public Health Scenario Simulator")
@@ -223,7 +268,7 @@ with st.sidebar:
 
 # ----------------- Data Extraction & Simulation -----------------
 try:
-    recent_records = da.get_recent(df, selected_ward, selected_origin)
+    recent_records = da.get_recent(df, selected_ward, selected_origin, overrides=live_overrides)
 except Exception as e:
     st.error(f"Unable to load surveillance window: {e}")
     st.stop()
@@ -546,15 +591,16 @@ with tab_citymap:
                     "water_logging_risk_index": "Drain Risk",
                 }
             )
-            st.dataframe(
-                display_table.style.applymap(
-                    lambda v: f"background-color: {RISK_BG.get(v, '#fff')}; font-weight: bold; color: {RISK_COLORS.get(v, '#000')}"
-                    if v in RISK_COLORS else "",
-                    subset=["Risk Tier"]
-                ),
-                height=480,
-                use_container_width=True
+            style_func = lambda v: (
+                f"background-color: {RISK_BG.get(v, '#fff')}; font-weight: bold; color: {RISK_COLORS.get(v, '#000')}"
+                if v in RISK_COLORS else ""
             )
+            styler = display_table.style
+            if hasattr(styler, "map"):
+                styled_df = styler.map(style_func, subset=["Risk Tier"])
+            else:
+                styled_df = styler.applymap(style_func, subset=["Risk Tier"])
+            st.dataframe(styled_df, height=480, use_container_width=True)
 
 
 # ==============================================================================

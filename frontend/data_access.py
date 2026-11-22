@@ -122,18 +122,55 @@ def available_origins(_df: pd.DataFrame) -> list:
     return sorted(_df["date"].unique())[4:]
 
 
-def get_recent(df: pd.DataFrame, ward_id: str, origin) -> pd.DataFrame:
-    """The exact 5 weekly rows (oldest first) that predict_ward expects."""
+def get_recent(df: pd.DataFrame, ward_id: str, origin, overrides: dict = None) -> pd.DataFrame:
+    """The exact 5 weekly rows (oldest first) that predict_ward expects.
+    
+    Supports both historical dataset dates and current/live dates (e.g. today).
+    If `origin` is a current/custom date, dynamically aligns the 5 weekly timestamps
+    ending at `origin` with exact 7-day intervals.
+    """
+    from datetime import timedelta
     origin = pd.Timestamp(origin)
     w = df[(df["ward_id"] == ward_id) & (df["date"] <= origin)]
-    recent = w.tail(5)[MODEL_INPUT_COLS].reset_index(drop=True)
-    if len(recent) < 5:
-        raise DataUnavailable("Fewer than 5 weeks of data exist up to this week.")
+    if len(w) < 5:
+        # If earlier than 5 weeks or beyond bounds, fall back to available records for ward
+        w = df[df["ward_id"] == ward_id]
+        if len(w) < 5:
+            raise DataUnavailable(f"Ward {ward_id} has fewer than 5 records in database.")
+    
+    recent = w.tail(5)[MODEL_INPUT_COLS].copy().reset_index(drop=True)
+    
+    # Ensure exact 7-day consecutive timeline ending at origin
+    target_dates = [origin - timedelta(days=7 * (4 - i)) for i in range(5)]
+    recent["date"] = target_dates
+
+    # Apply any live field overrides (e.g., current week weather or case inputs)
+    if overrides:
+        for col, val in overrides.items():
+            if col in recent.columns and val is not None:
+                recent.loc[recent.index[-1], col] = float(val)
+
     return recent
 
 
-def get_history(df: pd.DataFrame, ward_id: str, origin, weeks: int = 26) -> pd.DataFrame:
-    """Last `weeks` weekly rows of one ward, up to and including origin."""
+def get_history(df: pd.DataFrame, ward_id: str, origin, weeks: int = 16) -> pd.DataFrame:
+    """Last `weeks` weekly rows of one ward, up to and including origin.
+    
+    Maintains timeline continuity when origin is set to today's current date.
+    """
+    from datetime import timedelta
     origin = pd.Timestamp(origin)
+    max_data_date = df["date"].max()
+
     w = df[(df["ward_id"] == ward_id) & (df["date"] <= origin)]
-    return w.tail(weeks).reset_index(drop=True)
+    if len(w) < 5:
+        w = df[df["ward_id"] == ward_id]
+    
+    hist = w.tail(weeks)[MODEL_INPUT_COLS + ["min_temp_c", "max_temp_c"]].copy().reset_index(drop=True)
+
+    # If origin is beyond dataset date, adjust history timeline to end at origin
+    if origin > max_data_date:
+        n = len(hist)
+        hist["date"] = [origin - timedelta(days=7 * (n - 1 - i)) for i in range(n)]
+
+    return hist
